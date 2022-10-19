@@ -11,7 +11,7 @@ Allow `const` functions to behave differently during constant-evaluation and run
 # Motivation
 [motivation]: #motivation
 
-The past restriction of `const` functions having to behave the same way no matter where they were called has been a limitation and soundness issue. While the Rust language does, at the time of writing, not expose a way to determine whether a function has been called during constant evaluation or runtime (and this RFC does not propose adding such a feature), such an intrinsic (`const_eval_select`) does currently exist internally in `rustc`.
+The past restriction of `const` functions having to behave the same way no matter where they were called has been a limitation and it has been unclear whether such a difference in behaviour could cause unsoundness. While the Rust language does, at the time of writing, not expose a way to determine whether a function has been called during constant evaluation or runtime (and this RFC does not propose adding such a feature), such an intrinsic (`const_eval_select`) does currently exist internally in `rustc`.
 
 The precondition of this intrinsic has always been that the const-eval and runtime code have to exhibit the exact same behavior. Verifying this property about the two different implementations is often not trivial, which makes sound use of this intrinsic for non-trivial functions tricky. But it can often be desirable to use such an intrinsic to do various optimizations in runtime code that are not possible in constant evaluation.
 
@@ -44,7 +44,7 @@ If a `const fn` is called in a runtime constness-context, no additional restrict
 
 There are two main drawbacks to this RFC.
 
-Firstly, pure `const fn` under the old rules can be seen as a simple optimization opportunity for naive optimizers, as they could just reuse constant evaluation for `const fn` if the argument is known at compile time, even if the function is in a runtime context. This RFC makes such an optimization impossible. This is not seen as a problem by the author, as a more advanced optimizer (like LLVM) is able to remove these calls at compile time through means other than Rust's constant evaluation (inlining and constant folding). Also, a constant evaluation system can still evaluate executions in a runtime constness-context, as long as it behaves exactly like runtime.
+Firstly, pure `const fn` under the old rules can be seen as a simple optimization opportunity for naive optimizers, as they could just reuse constant evaluation for `const fn` if the argument is known at compile time, even if the function is in a runtime context. This RFC makes such an optimization impossible. This is not seen as a problem by the author, as a more advanced optimizer (like LLVM) is able to remove these calls at compile time through means other than Rust's constant evaluation (inlining and constant folding). Also, a constant evaluation system can still evaluate executions in a runtime constness-context, as long as it behaves exactly like runtime. The optimizer could also manually annotate functions as being truly pure by looking at the body.
 
 Secondly, with the current rules around `const fn` purity, unsafe code could choose to only sometimes call unknown `const fn` code at runtime depending on whether it needs the result. The author does not see this as a significant drawback, as this functionality is better served by language features that target this use case directly (like a `pure` attribute) and is therefore out of scope for the language feature of "functions evaluatable at compile time".
 
@@ -64,7 +64,7 @@ C++ with `constexpr`, a compile-time evaluation system similar to Rusts `const f
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
-Do we want to allow `const fn` evaluated during constant evaluation to behave nondeterministically?
+None for now.
 
 # Future possibilities
 [future-possibilities]: #future-possibilities
