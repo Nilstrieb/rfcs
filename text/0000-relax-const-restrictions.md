@@ -31,11 +31,16 @@ At the time of writing, there is no way for a function to detect whether it was 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-This RFC introduces a new concept called the "constness-context" of an execution of a function. A `const fn` is executed in a constant evaluation constness-context if it was called in a context where only `const fn` are allowed (like `static` initializers) or inside another `const fn` that was executed in a const constness-context. All other calls to a `const fn` (for example in `main`) are in a runtime constness-context.
+This RFC introduces a new concept called the "constness-context" of an execution of a function. A `const fn` is executed in a const constness-context if it was called in a context where only `const fn` are allowed (like `static` initializers) or inside another `const fn` that was executed in a const constness-context. All other calls to a `const fn` (for example in `main`) are in a runtime constness-context.
 
-A `const fn` is now allowed to exhibit different behavior depending on it being called in a constant evaluation or runtime constness-context. Language features and standard library functions may also differ in behavior depending on the constness-context they have been used or called in.
+We can therefore say that code can either be:
+- Always in a const constness-context (for example `static` initializers, array lengths...)
+- Maybe in a const constness-context (`const fn`), where the constness-context can differ between calls depending on the call-site
+- Always in a runtime const constness-context (non-`const` functions)
 
-The constness-context of a function is therefore observable behavior.
+A `const fn` is now allowed to exhibit different behavior depending on it being called in a const or runtime constness-context. Language features and standard library functions may also differ in behavior depending on the constness-context they have been used or called in.
+
+This makes the constness-context of a function observable behavior.
 
 If a `const fn` is called in a runtime constness-context, no additional restrictions are applied to it, and it may do anything a non-`const fn` can (for example, calling into FFI).
 
