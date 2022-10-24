@@ -44,6 +44,8 @@ This makes the constness-context of a function observable behavior.
 
 If a `const fn` is called in a runtime constness-context, no additional restrictions are applied to it, and it may do anything a non-`const fn` can (for example, calling into FFI).
 
+A `const fn` being called in a const constness-context will still be required to be deterministic, as this is required for type systme soundness.
+
 # Drawbacks
 [drawbacks]: #drawbacks
 
