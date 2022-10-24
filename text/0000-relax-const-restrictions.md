@@ -65,6 +65,7 @@ It would also be possible to allow them to behave differently, but keep the rest
 
 C++ with `constexpr`, a compile-time evaluation system similar to Rusts `const fn`, has a [`std::is_constant_evaluated`](std-is-constant-evaluated) function which can be used to determine whether the function is being executed during constant evaluation or at runtime. It does not impose restrictions that code has to behave the same during constant evaluation or runtime.
 
+Rust has rejected having pure functions before. Back in early pre-1.0 Rust, functions could be annotated as `pure`. This was later removed because it was not deemed useful enough.
 
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
