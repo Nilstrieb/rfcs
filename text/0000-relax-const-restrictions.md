@@ -26,12 +26,22 @@ This RFC allows `const fn` to exhibit different behavior during constant evaluat
 
 If a `const fn` is able to detect whether it has been called during constant evaluation or at runtime (either through an intrinsic or a future language feature), then it is allowed to exhibit different behavior. Also, a `const fn` called at runtime can do anything a normal function can do, with no additional restrictions applied to it. It could open a file, call a system randomness API or gracefully exit the program. 
 
-At the time of writing, there is no way for a function to detect whether it was called at runtime or during constant evaluation in stable Rust and this RFC is not concerned with adding any, but it encourages future RFCs for adding this capability.
+At the time of writing, there is no way for a function to detect whether it was called at runtime or during constant evaluation in stable Rust and this RFC is not concerned with adding any, but it unblocks future RFCs for adding this capability.
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-This RFC introduces a new concept called the "constness-context" of an execution of a function. A `const fn` is executed in a const constness-context if it was called in a context where only `const fn` are allowed (like `static` initializers) or inside another `const fn` that was executed in a const constness-context. All other calls to a `const fn` (for example in `main`) are in a runtime constness-context.
+This RFC introduces a new concept called the "constness-context" of an execution of a function. A `const fn` is executed in a const constness-context if it was called inside another `const fn` that was executed in a const constness-context or if it was called in one of the following places:
+
+- `const` initializers (`const X: _ = CONST;`)
+- `static` initializers (`static X: _ = CONST;`)
+- array lengths (`[T; CONST]`)
+- enum discriminants (`enum A { B = CONST }`)
+- inline-const block (`const { CONST }`)
+
+This list may be extended by future language features.
+
+All other calls to a `const fn` (for example in `main`) are in a runtime constness-context.
 
 We can therefore say that code can either be:
 - Always in a const constness-context (for example `static` initializers, array lengths...)
@@ -44,16 +54,18 @@ This makes the constness-context of a function observable behavior.
 
 If a `const fn` is called in a runtime constness-context, no additional restrictions are applied to it, and it may do anything a non-`const fn` can (for example, calling into FFI).
 
-A `const fn` being called in a const constness-context will still be required to be deterministic, as this is required for type systme soundness.
+A `const fn` being called in a const constness-context will still be required to be deterministic, as this is required for type system soundness. This invariant is required by the compiler and cannot be broken, even with unsafe code.
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
 Pure `const fn` under the old rules can be seen as a simple optimization opportunity for naive optimizers, as they could just reuse constant evaluation for `const fn` if the argument is known at compile time, even if the function is in a runtime context. This RFC makes such an optimization impossible. This is not seen as a problem by the author, as a more advanced optimizer (like LLVM) is able to remove these calls at compile time through means other than Rust's constant evaluation (inlining and constant folding). Also, a constant evaluation system can still evaluate executions in a runtime constness-context, as long as it behaves exactly like runtime. The optimizer could also manually annotate functions as being truly pure by looking at the body.
 
-Secondly, with the current rules around `const fn` purity, unsafe code could choose to only sometimes call unknown `const fn` code at runtime depending on whether it needs the result. The author does not see this as a significant drawback, as this functionality is better served by language features that target this use case directly (like a `pure` attribute) and is therefore out of scope for the language feature of "functions evaluatable at compile time". This could break code that already relies on this, but since Rust doesn't have proper support for this, the impact should be minimal.
+Secondly, with the current rules around `const fn` purity, unsafe code could choose rely on purity, e.g. by caching function return values and assuming this is not observable to clients. The author does not see this as a significant drawback, as this functionality is better served by language features that target this use case directly (like a `pure` attribute) and is therefore out of scope for the language feature of "functions evaluatable at compile time". This could break code that already relies on this, but since Rust doesn't have proper support for this, the impact should be minimal.
 
 The old rules, which say that `const fn` always has to behave the same way are already well-known in the community. Changing this will require teaching people about the new change. Since this is a very simple change, this should be easy.
+
+This is technically a breaking change. Code could rely on this behavior right now, as the [internal documentation](https://doc.rust-lang.org/1.65.0/std/intrinsics/fn.const_eval_select.html#safety) for `std::intrinsics::const_eval_select` explains. But this will not be a problem problem in practice, because all `const fn` written prior to this RFC (and also for quite some time after it until an actual way to distinguish between const eval and runtime is added) are guarateed to behave the same still. So code relying on code written prior to this RFC will still run just fine afterwards, although it did get theoretically unsound. The dependency could then of course update and introduce such difference, but this happening in practice is _highly_ unlikely and would probably require a major version bump anyways as changing behavior generally requires a major version bump.
 
 # Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
