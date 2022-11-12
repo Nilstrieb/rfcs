@@ -31,7 +31,7 @@ At the time of writing, there is no way for a function to detect whether it was 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-This RFC introduces a new concept called the "constness-context" of an execution of a function. A `const fn` is executed in a const constness-context if it was called inside another `const fn` that was executed in a const constness-context or if it was called in one of the following places:
+Each execution of a function stands in a particular "constness context". A `const fn` is executed in a const context if it was called inside another `const fn` that was executed in a const context or if it was called in one of the following places:
 
 - `const` initializers (`const X: _ = CONST;`)
 - `static` initializers (`static X: _ = CONST;`)
@@ -41,25 +41,25 @@ This RFC introduces a new concept called the "constness-context" of an execution
 
 This list may be extended by future language features.
 
-All other calls to a `const fn` (for example in `main`) are in a runtime constness-context.
+All other calls to a `const fn` (for example in `main`) are in a runtime context.
 
-We can therefore say that code can either be:
-- Always in a const constness-context (for example `static` initializers, array lengths...)
-- Maybe in a const constness-context (`const fn`), where the constness-context can differ between calls depending on the call-site
-- Always in a runtime const constness-context (non-`const` functions)
+We can therefore say that statically, code can either be:
+- Always in a const context (code inside one of the places listed above)
+- Maybe in a const context (`const fn`), where the context can differ between calls depending on the call-site
+- Always in a runtime const context (non-`const` functions)
 
-A `const fn` is now allowed to exhibit different behavior depending on it being called in a const or runtime constness-context. Language features and standard library functions may also differ in behavior depending on the constness-context they have been used or called in.
+A `const fn` is now allowed to exhibit different behavior depending on it being called in a const or runtime context. Language features and standard library functions may also differ in behavior depending on the context they have been used or called in, though the Rust langauge and standard library will explicitly document such behavioral differences.
 
-This makes the constness-context of a function observable behavior.
+This makes the context of a function observable behavior.
 
-If a `const fn` is called in a runtime constness-context, no additional restrictions are applied to it, and it may do anything a non-`const fn` can (for example, calling into FFI).
+If a `const fn` is called in a runtime context, no additional restrictions are applied to it, and it may do anything a non-`const fn` can (for example, calling into FFI).
 
-A `const fn` being called in a const constness-context will still be required to be deterministic, as this is required for type system soundness. This invariant is required by the compiler and cannot be broken, even with unsafe code.
+A `const fn` being called in a const context will still be required to be deterministic, as this is required for type system soundness. This invariant is required by the compiler and cannot be broken, even with unsafe code.
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
-Pure `const fn` under the old rules can be seen as a simple optimization opportunity for naive optimizers, as they could just reuse constant evaluation for `const fn` if the argument is known at compile time, even if the function is in a runtime context. This RFC makes such an optimization impossible. This is not seen as a problem by the author, as a more advanced optimizer (like LLVM) is able to remove these calls at compile time through means other than Rust's constant evaluation (inlining and constant folding). Also, a constant evaluation system can still evaluate executions in a runtime constness-context, as long as it behaves exactly like runtime. The optimizer could also manually annotate functions as being truly pure by looking at the body.
+Pure `const fn` under the old rules can be seen as a simple optimization opportunity for naive optimizers, as they could just reuse constant evaluation for `const fn` if the argument is known at compile time, even if the function is in a runtime context. This RFC makes such an optimization impossible. This is not seen as a problem by the author, as a more advanced optimizer (like LLVM) is able to remove these calls at compile time through means other than Rust's constant evaluation (inlining and constant folding). Also, a constant evaluation system can still evaluate executions in a runtime context, as long as it behaves exactly like runtime. The optimizer could also manually annotate functions as being truly pure by looking at the body.
 
 Secondly, with the current rules around `const fn` purity, unsafe code could choose rely on purity, e.g. by caching function return values and assuming this is not observable to clients. The author does not see this as a significant drawback, as this functionality is better served by language features that target this use case directly (like a `pure` attribute) and is therefore out of scope for the language feature of "functions evaluatable at compile time". This could break code that already relies on this, but since Rust doesn't have proper support for this, the impact should be minimal.
 
