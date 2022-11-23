@@ -15,7 +15,7 @@ The past restriction of `const` functions having to behave the same way no matte
 
 The precondition of this intrinsic has always been that the const-eval and runtime code have to exhibit the exact same behavior. Verifying this property about the two different implementations is often not trivial, which makes sound use of this intrinsic for non-trivial functions tricky. But it can often be desirable to use such an intrinsic to do various optimizations in runtime code that are not possible in constant evaluation.
 
-Also, floats are currently not supported in `const fn`. This is because many different hardware implementations exhibit subtly different floating point behaviors and trying to emulate all of them correctly at compile time is close to impossible. Allowing const-eval and runtime behavior to differ could unlock const floats in the future, by accepting that floats can have subtly different behaviors at runtime.
+Also, floats are currently not supported in `const fn`. This is because many different hardware implementations exhibit subtly different floating point behaviors and trying to emulate all of them correctly at compile time is close to impossible. Allowing const-eval and runtime behavior to differ will enable floats in a const context in the future.
 
 Rust code often contains debug assertions or preconditions that must be upheld but are too expensive to check in release mode. It is desirable to also check these preconditions during constant evaluation (for example with a `debug_or_const_assert!` macro). This is unsound under the old rules, as this would be different behavior during const evaluation in release mode. This RFC allows such debug assertions to also run during constant evaluation (but does not propose this itself).
 
@@ -65,12 +65,12 @@ Secondly, with the current rules around `const fn` purity, unsafe code could cho
 
 The old rules, which say that `const fn` always has to behave the same way are already well-known in the community. Changing this will require teaching people about the new change. Since this is a very simple change, this should be easy.
 
-This is technically a breaking change. Code could rely on this behavior right now, as the [internal documentation](https://doc.rust-lang.org/1.65.0/std/intrinsics/fn.const_eval_select.html#safety) for `std::intrinsics::const_eval_select` explains. But this will not be a problem problem in practice, because all `const fn` written prior to this RFC (and also for quite some time after it until an actual way to distinguish between const eval and runtime is added) are guarateed to behave the same still. So code relying on code written prior to this RFC will still run just fine afterwards, although it did get theoretically unsound. The dependency could then of course update and introduce such difference, but this happening in practice is _highly_ unlikely and would probably require a major version bump anyways as changing behavior generally requires a major version bump.
+This is technically a breaking change. Code could rely on this behavior right now, as the [internal documentation](https://doc.rust-lang.org/1.65.0/std/intrinsics/fn.const_eval_select.html#safety) for `std::intrinsics::const_eval_select` explains. Relying on this was never endorsed or officially documented and there are no known cases of code relying on it. This is deemed to be highly unlikely and even if some code did rely on this, it will continue to work as long as no new behavioral differences are introduced by the code. The internal docs will have to be adjusted after this RFC is accepted.
 
 # Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
 
-An alternative is to keep the current rules. This is bad because the current rules are highly restrictive and don't have a significant benefit to them.
+An alternative is to keep the current rules. This is bad because the current rules are highly restrictive and don't have a significant benefit to them. With the current rules, floats cannot be used in `const fn` without significant restrictions.
 
 It would also be possible to allow them to behave differently, but keep the restrictions around purity and determinism at runtime. This would still allow unsafe code to treat `const fn` specially, but this is not seen as a desirable feature of `const fn`.
 
@@ -89,6 +89,8 @@ None for now.
 # Future possibilities
 [future-possibilities]: #future-possibilities
 
-This unlocks various new things for `const fn`. For example, the subtle difference of floating point behavior may now be considered acceptable and floats could be allowed in `const fn`. An intrinsic like `const_eval_select` (in the form of an intrinsic or a more complete language feature) could now be added safely, enabling more parts of the ecosystem to make functions `const` without losing runtime optimizations.
+An intrinsic like `const_eval_select` (in the form of an intrinsic or a more complete language feature) could now be added safely, enabling more parts of the ecosystem to make functions `const` without losing runtime optimizations.
+
+Allowing all floating point operations in a const context without any restrictions.
 
 [std-is-constant-evaluated]: https://en.cppreference.com/w/cpp/types/is_constant_evaluated
