@@ -11,11 +11,13 @@ Allow `const` functions to behave differently during constant-evaluation and run
 # Motivation
 [motivation]: #motivation
 
-The past restriction of `const` functions having to behave the same way no matter where they were called has been a limitation and it has been unclear whether such a difference in behaviour could cause unsoundness. While the Rust language does, at the time of writing, not expose a way to determine whether a function has been called during constant evaluation or runtime (and this RFC does not propose adding such a feature), such an intrinsic (`const_eval_select`) does currently exist internally in `rustc`.
+The past restriction of `const` functions having to behave the same way no matter where they were called has been a limitation and it has been unclear whether such a difference in behaviour could cause unsoundness. While the Rust language does, at the time of writing, not expose a way to determine whether a function has been called during constant evaluation or runtime (and this RFC does not propose adding such a feature), such an intrinsic (`const_eval_select`) does currently exist internally in the standard library.
 
 The precondition of this intrinsic has always been that the const-eval and runtime code have to exhibit the exact same behavior. Verifying this property about the two different implementations is often not trivial, which makes sound use of this intrinsic for non-trivial functions tricky. But it can often be desirable to use such an intrinsic to do various optimizations in runtime code that are not possible in constant evaluation.
 
-Also, floats are currently not supported in `const fn`. This is because many different hardware implementations exhibit subtly different floating point behaviors and trying to emulate all of them correctly at compile time is close to impossible. Allowing const-eval and runtime behavior to differ will enable floats in a const context in the future.
+Exposing such an intrinsic or a language feature that allows the same can be useful, allowing for more efficient code in `const fn` during runtime (like using SIMD-intrinsics). With the current rules, such a feature would have to be unsafe.
+
+Also, floats are currently not supported in `const fn`. This is because many different hardware implementations exhibit subtly different floating point behaviors and trying to emulate all of them correctly at compile time is close to impossible. Allowing const-eval and runtime behavior to differ will enable unrestricted floats in a const context in the future.
 
 Rust code often contains debug assertions or preconditions that must be upheld but are too expensive to check in release mode. It is desirable to also check these preconditions during constant evaluation (for example with a `debug_or_const_assert!` macro). This is unsound under the old rules, as this would be different behavior during const evaluation in release mode. This RFC allows such debug assertions to also run during constant evaluation (but does not propose this itself).
 
@@ -48,7 +50,7 @@ We can therefore say that statically, code can either be:
 - Maybe in a const context (`const fn`), where the context can differ between calls depending on the call-site
 - Always in a runtime const context (non-`const` functions)
 
-A `const fn` is now allowed to exhibit different behavior depending on it being called in a const or runtime context. Language features and standard library functions may also differ in behavior depending on the context they have been used or called in, though the Rust langauge and standard library will explicitly document such behavioral differences.
+A `const fn` is now allowed to exhibit different behavior depending on it being called in a const or runtime context. Language features and standard library functions may also differ in behavior depending on the context they have been used or called in, though the Rust language and standard library will explicitly document such behavioral differences.
 
 This makes the context of a function observable behavior.
 
@@ -61,9 +63,9 @@ A `const fn` being called in a const context will still be required to be determ
 
 Pure `const fn` under the old rules can be seen as a simple optimization opportunity for naive optimizers, as they could just reuse constant evaluation for `const fn` if the argument is known at compile time, even if the function is in a runtime context. This RFC makes such an optimization impossible. This is not seen as a problem by the author, as a more advanced optimizer (like LLVM) is able to remove these calls at compile time through means other than Rust's constant evaluation (inlining and constant folding). Also, a constant evaluation system can still evaluate executions in a runtime context, as long as it behaves exactly like runtime. The optimizer could also manually annotate functions as being truly pure by looking at the body.
 
-Secondly, with the current rules around `const fn` purity, unsafe code could choose rely on purity, e.g. by caching function return values and assuming this is not observable to clients. The author does not see this as a significant drawback, as this functionality is better served by language features that target this use case directly (like a `pure` attribute) and is therefore out of scope for the language feature of "functions evaluatable at compile time". This could break code that already relies on this, but since Rust doesn't have proper support for this, the impact should be minimal.
+Secondly, with the current rules around `const fn` purity, unsafe code could choose to rely on purity, e.g. by caching function return values and assuming this is not observable to clients. The author does not see this as a significant drawback, as this functionality is better served by language features that target this use case directly (like a `pure` attribute) and is therefore out of scope for the language feature of "functions evaluatable at compile time". This could break code that already relies on this, but since Rust doesn't have proper support for this, the impact should be minimal at most.
 
-The old rules, which say that `const fn` always has to behave the same way are already well-known in the community. Changing this will require teaching people about the new change. Since this is a very simple change, this should be easy.
+The old rules, which say that `const fn` always has to behave the same way are already well-known in the community. Changing this will require teaching people about the new change. Since this is a simple change, this should not be too hard (for example with a mention in the release notes).
 
 This is technically a breaking change. Code could rely on this behavior right now, as the [internal documentation](https://doc.rust-lang.org/1.65.0/std/intrinsics/fn.const_eval_select.html#safety) for `std::intrinsics::const_eval_select` explains. Relying on this was never endorsed or officially documented and there are no known cases of code relying on it. This is deemed to be highly unlikely and even if some code did rely on this, it will continue to work as long as no new behavioral differences are introduced by the code. The internal docs will have to be adjusted after this RFC is accepted.
 
