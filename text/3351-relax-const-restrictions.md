@@ -1,6 +1,6 @@
 - Feature Name: relax_const_restrictions
-- Start Date: 2022-10-06
-- RFC PR: [rust-lang/rfcs#0000](https://github.com/rust-lang/rfcs/pull/0000)
+- Start Date: 2022-12-02
+- RFC PR: [rust-lang/rfcs#3351](https://github.com/rust-lang/rfcs/pull/3351)
 - Rust Issue: [rust-lang/rust#0000](https://github.com/rust-lang/rust/issues/0000)
 
 # Summary
