@@ -38,7 +38,7 @@ In the initial implementation, we propose adding support for the following large
 The ChatGPT language model will be invoked with the existing `std::request` functionality.
 The Rust Foundation can provide an OpenAI account with credentials injected into the precompiled standard library,
 though the security implications of this should be evaluated with the Rust Foundation security engineer first.
-This enhances user experience because the user does not have to set up an account themselves. The integration with Gemini has lot been decided yet.
+This enhances user experience because the user does not have to set up an account themselves. The integration with Gemini has not been decided yet.
 
 As Clang is an open source large language model, it can be baked into the standard library. The Rust compiler already contains an LLVM.
 
